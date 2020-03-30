@@ -1,6 +1,7 @@
 require('dotenv').config();
 const crypto = require('crypto');
 const express = require("express");
+const cons = require("consolidate");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 const rp = require("request-promise");
@@ -12,6 +13,9 @@ const directLineTokenEp = `https://${DIRECTLINE_ENDPOINT_URI || "directline.botf
 
 // Initialize the web app instance,
 const app = express();
+app.engine('html', cons.swig);
+app.set('view engine', 'html');
+app.set('views', path.join(__dirname, 'views'));
 app.use(cookieParser());
 // Indicate which directory static resources
 // (e.g. stylesheets) should be served from.
@@ -19,15 +23,11 @@ app.use(express.static(path.join(__dirname, "public")));
 // begin listening for requests.
 const port = process.env.PORT || 8080;
 const region = process.env.REGION || "Unknown";
+const appInsightInstrumnetationKey = process.env.APPINSIGHTS_INSTRUMENTATIONKEY;
 
 app.listen(port, function() {
     console.log("Express server listening on port " + port);
 });
-
-function isUserAuthenticated(){
-    // add here the logic to verify the user is authenticated
-    return true;
-}
 
 const appConfig = {
     isHealthy : false,
@@ -71,12 +71,15 @@ app.get('/health', function(req, res){
     }
 });
 
-app.post('/chatBot',  function(req, res) {
-    if (!isUserAuthenticated()) {
-        res.status(403).send();
-        return;
-    }
-    rp(appConfig.options)
+app.get('/', async function(req, res) {
+    res.render('index', {
+        jwtToken: await get_jwt(req),
+        appInsightInstrumnetationKey: appInsightInstrumnetationKey
+    });
+  });
+
+async function get_jwt(req){
+    return await rp(appConfig.options)
         .then(function (parsedBody) {
             var userid = req.query.userId || req.cookies.userid;
             if (!userid) {
@@ -95,11 +98,11 @@ app.post('/chatBot',  function(req, res) {
             }
             response['directLineURI'] = DIRECTLINE_ENDPOINT_URI;
             const jwtToken = jwt.sign(response, APP_SECRET);
-            res.send(jwtToken);
+            return jwtToken;
         })
         .catch(function (err) {
             appConfig.isHealthy = false;
-            res.status(err.statusCode).send();
             console.log("failed");
+            return "";
         });
-});
+}

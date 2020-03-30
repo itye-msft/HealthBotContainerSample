@@ -1,33 +1,3 @@
-function requestChatBot(loc) {
-    const params = new URLSearchParams(location.search);
-    const locale = params.has('locale') ? params.get('locale') : 'en_us';
-    const oReq = new XMLHttpRequest();
-    oReq.addEventListener("load", initBotConversation);
-    var path = "/chatBot?locale=" + locale;
-
-    if (loc) {
-        path += "&lat=" + loc.lat + "&long=" + loc.long;
-    }
-    if (params.has('userId')) {
-        path += "&userId=" + params.get('userId');
-    }
-    if (params.has('userName')) {
-        path += "&userName=" + params.get('userName');
-    }
-    oReq.open("POST", path);
-    oReq.send();
-}
-
-function chatRequested() {
-    const params = new URLSearchParams(location.search);
-    if (params.has('shareLocation')) {
-        getUserLocation(requestChatBot);
-    }
-    else {
-        requestChatBot();
-    }
-}
-
 function getUserLocation(callback) {
     navigator.geolocation.getCurrentPosition(
         function(position) {
@@ -47,12 +17,12 @@ function getUserLocation(callback) {
 }
 
 function initBotConversation() {
-    if (this.status >= 400) {
-        alert(this.statusText);
+    if (jwtToken == "") {
+        alert("Error, cannot connect to the service.");
         return;
     }
     // extract the data from the JWT
-    const jsonWebToken = this.response;
+    const jsonWebToken = jwtToken;
     const tokenPayload = JSON.parse(atob(jsonWebToken.split('.')[1]));
     const user = {
         id: tokenPayload.userId,
